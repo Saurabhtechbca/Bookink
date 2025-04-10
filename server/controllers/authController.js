@@ -1,16 +1,26 @@
-import { catchAsyncErrors } from "../middlewares/catchAsyncErrors.js";
-import ErrorHandler from "../middlewares/errorMiddlewares.js";
-import { User } from "../models/userModels.js";
-import bcrypt from "bcrypt";
-import { sendVerificationCode } from "../utils/sendVerification.js";
-import { sendToken } from "../utils/sendToken.js";
+// controllers/authController.js
 
+import bcrypt from 'bcrypt';
+import User from '../models/userModel.js';
+import catchAsyncErrors from '../middleware/catchAsyncErrors.js';
+import errorHandler from '../utils/errorHandler.js';
+import { sendVerificationCode } from '../utils/sendVerificationCode.js';
+import { sendToken } from '../utils/sendToken.js';
+
+// ✅ Register Controller
 export const register = catchAsyncErrors(async (req, res, next) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
     return next(new ErrorHandler("Please enter all fields", 400));
   }
+
+  // 🧹 Clean up old unverified entries older than 10 minutes
+  await User.deleteMany({
+    email,
+    accountVerified: false,
+    createdAt: { $lt: new Date(Date.now() - 10 * 60 * 1000) },
+  });
 
   const isRegistered = await User.findOne({ email, accountVerified: true });
   if (isRegistered) {
@@ -48,51 +58,37 @@ export const register = catchAsyncErrors(async (req, res, next) => {
   const verificationCode = await user.generateVerificationCode();
   await user.save();
 
-  sendVerificationCode(verificationCode, email, res);
+  await sendVerificationCode(verificationCode, email, res); // Note the await
 });
 
+// ✅ Verify OTP Controller
 export const verifyOTP = catchAsyncErrors(async (req, res, next) => {
   const { email, otp } = req.body;
 
   if (!email || !otp) {
-    return next(new ErrorHandler("Email or OTP is missing.", 400));
+    return next(new ErrorHandler("Please provide email and OTP", 400));
   }
 
-  const userEntries = await User.find({
-    email,
-    accountVerified: false,
-  }).sort({ createdAt: -1 });
+  const user = await User.findOne({ email, accountVerified: false });
 
-  if (!userEntries || userEntries.length === 0) {
-    return next(new ErrorHandler("User not found.", 400));
-  }
-
-  const user = userEntries[0];
-
-  if (userEntries.length > 1) {
-    await User.deleteMany({
-      _id: { $ne: user._id },
-      email,
-      accountVerified: false,
-    });
-  }
-
-  if (user.verificationCode !== Number(otp)) {
-    return next(new ErrorHandler("Invalid OTP", 400));
+  if (!user) {
+    return next(new ErrorHandler("User not found or already verified", 404));
   }
 
   const now = Date.now();
-  const codeExpiry = new Date(user.verificationCodeExpire).getTime();
+  const isValid =
+    user.verificationCode === Number(otp) &&
+    now <= new Date(user.verificationCodeExpire).getTime();
 
-  if (now > codeExpiry) {
-    return next(new ErrorHandler("OTP has expired.", 400));
+  if (!isValid) {
+    return next(new ErrorHandler("Invalid or expired OTP", 400));
   }
 
   user.accountVerified = true;
-  user.verificationCode = null;
-  user.verificationCodeExpire = null;
+  user.verificationCode = undefined;
+  user.verificationCodeExpire = undefined;
 
-  await user.save({ validateModifiedOnly: true });
+  await user.save();
 
-  sendToken(user, 200, "Account Verified.", res);
+  sendToken(user, 200, "Account verified successfully", res);
 });
