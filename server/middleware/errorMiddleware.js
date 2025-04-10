@@ -1,4 +1,4 @@
-class ErrorHandler extends Error {
+class errorHandler extends Error {
     constructor(message, statusCode) {
       super(message);
       this.statusCode = statusCode;
@@ -12,20 +12,20 @@ class ErrorHandler extends Error {
   
    
     if (err.code === 11000) {
-      err = new ErrorHandler("Duplicate field value entered", 400);
+      err = new errorHandler("Duplicate field value entered", 400);
     }
   
     if (err.name === "JsonWebTokenError") {
-      err = new ErrorHandler("JSON Web Token is invalid. Try again.", 400);
+      err = new errorHandler("JSON Web Token is invalid. Try again.", 400);
     }
   
     if (err.name === "TokenExpiredError") {
-      err = new ErrorHandler("JSON Web Token has expired. Try again.", 400);
+      err = new errorHandler("JSON Web Token has expired. Try again.", 400);
     }
   
    
     if (err.name === "CastError") {
-      err = new ErrorHandler(`Resource not found. Invalid: ${err.path}`, 400);
+      err = new errorHandler(`Resource not found. Invalid: ${err.path}`, 400);
     }
   
     
@@ -42,5 +42,5 @@ class ErrorHandler extends Error {
     });
   };
   
-  export default ErrorHandler;
+  export default errorHandler;
   

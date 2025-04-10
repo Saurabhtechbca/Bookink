@@ -63,7 +63,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// ✅ Generate Verification Code (OTP)
+// Generate Verification Code (OTP)
 userSchema.methods.generateVerificationCode = function () {
   function generateRandomFiveDigitNumber() {
     const firstDigit = Math.floor(Math.random() * 9) + 1;
@@ -79,7 +79,7 @@ userSchema.methods.generateVerificationCode = function () {
   return verificationCode;
 };
 
-// ✅ Compare OTP
+// Compare OTP
 userSchema.methods.compareVerificationCode = function (inputCode) {
   return (
     this.verificationCode === parseInt(inputCode) &&
@@ -87,14 +87,14 @@ userSchema.methods.compareVerificationCode = function (inputCode) {
   );
 };
 
-// ✅ Generate JWT Token
+// Generate JWT Token
 userSchema.methods.generateToken = function () {
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY, {
     expiresIn: "3d",
   });
 };
 
-// ✅ Hash password before save
+// Hash password before save
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);

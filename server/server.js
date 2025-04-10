@@ -7,16 +7,16 @@ dotenv.config(); // Load environment variables
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 10000, // Optional: customize timeout
+    dbName: "bookink", // optional if already in URI
+    serverSelectionTimeoutMS: 10000, // Optional: custom timeout
   })
   .then(() => {
     console.log("✅ Connected to MongoDB");
 
     // Start the server only after DB is connected
-    app.listen(process.env.PORT, () => {
-      console.log(`🚀 Server is running on port ${process.env.PORT}`);
+    const PORT = process.env.PORT || 4000;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server is running on port ${PORT}`);
     });
   })
   .catch((err) => {
