@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import User from "../models/userModel.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
-import ErrorHandler from "../utils/errorHandler.js"; // 
+import ErrorHandler from "../utils/errorHandler.js";
 import { sendVerificationCode } from "../utils/sendVerificationCode.js";
 import { sendToken } from "../utils/sendToken.js";
 
@@ -13,20 +13,17 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Please enter all fields", 400));
   }
 
-  // 🧹 Clean up old unverified entries older than 10 minutes
   await User.deleteMany({
     email,
     accountVerified: false,
     createdAt: { $lt: new Date(Date.now() - 10 * 60 * 1000) },
   });
 
-  // ✅ Check if already verified
   const isRegistered = await User.findOne({ email, accountVerified: true });
   if (isRegistered) {
     return next(new ErrorHandler("User already exists", 400));
   }
 
-  // ✅ Too many unverified attempts
   const registrationAttempts = await User.find({
     email,
     accountVerified: false,
@@ -41,14 +38,12 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     );
   }
 
-  // ✅ Password length check
   if (password.length < 8 || password.length > 16) {
     return next(
       new ErrorHandler("Password must be between 8 and 16 characters.", 400)
     );
   }
 
-  // ✅ Create new user
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await User.create({
@@ -57,11 +52,9 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     password: hashedPassword,
   });
 
-  // ✅ Generate OTP
   const verificationCode = await user.generateVerificationCode();
   await user.save();
 
-  // ✅ Send OTP to email
   await sendVerificationCode(verificationCode, email, res);
 });
 
@@ -88,13 +81,32 @@ export const verifyOTP = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Invalid or expired OTP", 400));
   }
 
-  // ✅ Mark as verified
   user.accountVerified = true;
   user.verificationCode = undefined;
   user.verificationCodeExpire = undefined;
 
   await user.save();
 
-  // ✅ Send token after successful verification
   sendToken(user, 200, "Account verified successfully", res);
+});
+
+// ✅ Login Controller
+export const login = catchAsyncErrors(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return next(new ErrorHandler("Please enter all fields", 400));
+  }
+
+  const user = await User.findOne({ email, accountVerified: true }).select("+password");
+  if (!user) {
+    return next(new ErrorHandler("Invalid email or password", 401));
+  }
+
+  const isPasswordMatched = await bcrypt.compare(password, user.password);
+  if (!isPasswordMatched) {
+    return next(new ErrorHandler("Invalid email or password", 401));
+  }
+
+  sendToken(user, 200, "User login successful", res);
 });

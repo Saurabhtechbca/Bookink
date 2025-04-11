@@ -1,22 +1,28 @@
+// server.js
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { app } from "./app.js";
 
 dotenv.config(); // Load environment variables
 
-// Connect to MongoDB
+// Log current environment
+console.log("✅ Environment:", process.env.NODE_ENV);
+console.log("✅ Mongo URI:", process.env.MONGO_URI);
+
+// Connect to MongoDB Atlas
 mongoose
   .connect(process.env.MONGO_URI, {
-    dbName: "bookink", // optional if already in URI
-    serverSelectionTimeoutMS: 10000, // Optional: custom timeout
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    dbName: "bookink", // Optional if included in URI
   })
   .then(() => {
-    console.log("✅ Connected to MongoDB");
+    console.log("✅ Connected to MongoDB:", mongoose.connection.name);
 
-    // Start the server only after DB is connected
+    // Start the server
     const PORT = process.env.PORT || 4000;
     app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
